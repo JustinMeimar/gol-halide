@@ -3,11 +3,16 @@
 
 int main() {
 
-    auto rules = Rules::Conways();
-    for (const auto& r : rules.getRules()) {
-        std::cout << "RULE: " << r << std::endl; 
+    // auto rules = Rules::Conways();
+    // for (const auto predicate : rules.getRules()) {
+    //     std::cout << "RULE: " << predicate << std::endl; 
+    // }
+    
+    Automata gol = Automata(Rules::Conways());
+    while (1) {
+        gol.step();
+        gol.draw();
     }
-    // std::cout << getLowestBits<255,6>() << std::endl; 
-    // std::cout << "Hi\n";
+
     return 0;
 }
