@@ -1,96 +1,95 @@
 #include <bitset>
 #include <vector>
 #include <array>
+#include <memory>
 #include <iostream>
 #include <unordered_map>
+
 /// @TODO: Fix this
 #include "/home/justin/install/Halide/build/include/Halide.h"
 
-constexpr std::size_t CONWAYS_RULE_COUNT = 512;
+#define BLACK 0x00
+#define WHITE 0xFF
 
-using RuleBitMap = std::array<std::size_t, CONWAYS_RULE_COUNT>; 
+/////////////////////////////////////////////////////////////////////
+/// rule.h
 
-/// Get a compile time bitset of the K lowest bits from an unsigned integer N 
-template<size_t N, size_t K>
-constexpr std::bitset<K> getLowestBits() {
-    return std::bitset<K>(N & ((1ULL << K) - 1));
-}
+class Rule { 
+    public:
+        virtual ~Rule() = default; 
+        virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) = 0;
+    
+    protected:
+        Halide::Func update_func;
+        Halide::Var x, y;
+        Halide::Target target;
+};
 
-///
-template<std::size_t N, std::size_t INDEX=0>
-struct RulePermutationGenerator {
+class ConwayRule : public Rule {
+    public:
+        ConwayRule(std::string &&rule_string) {}
+
+        virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) override;
+        // 
+        virtual void define_and_sched(); 
+};
+
+class HexagonalRule : public Rule {
+  public:
+    virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) override;
+};
+
+/////////////////////////////////////////////////////////////////////
+/// seed.h
+
+class Seed {
+  public:
+    virtual Halide::Buffer<uint8_t> allocate(std::size_t x, std::size_t y) = 0;
+};
+
+class RunLengthEncoding : public Seed {
+  public:
     ///
-    static void generate(RuleBitMap& rules) {
-        // Check if we are generating past the specified permutations on N 
-        if constexpr (INDEX < N) {
-            auto constexpr bit_string = getLowestBits<INDEX, 9>();
-            if (bit_string.count() < 2 || bit_string.count() > 4) {
-                // make cell dead
-                rules[INDEX] = 0;
-            } else {
-                // make cell alive
-                rules[INDEX] = 1;
-            }
-            RulePermutationGenerator<N, INDEX+1>::generate(rules);
-        }
-    }
+    RunLengthEncoding(std::string&& seed_string)
+        : seed_string(std::move(seed_string)) {}
+    
+    /// @desc: Unpack the grid run-length-encoding string into a buffer
+    virtual Halide::Buffer<uint8_t> allocate(std::size_t x, std::size_t y);
+
+  private:
+    std::string seed_string;
+    // std::size_t x, y;
 };
 
-class Rules {
-public:
-    /// Construct a set of rules for Conway's Game of Life.
-    static Rules Conways() {
-        RuleBitMap rules;
-        RulePermutationGenerator<CONWAYS_RULE_COUNT>::generate(rules); 
-        return Rules(std::move(rules));
-    }
 
-    RuleBitMap getRules() const { return rules; }
-private:
-    /// private constructor to enforce going through 
-    explicit Rules(RuleBitMap&& rules)
-        : rules(std::move(rules)) {}
+/////////////////////////////////////////////////////////////////////
+/// automata.h
 
-    /// 
-    RuleBitMap rules;
-};
-
-///////
 class Automata {
 public:
-
-    Automata(Rules&& rules)
-        : rules(std::move(rules)) {}
-    
-    /// Initiailize with a halide buffer
-    Automata(Rules&& rules, Halide::Buffer<uint8_t>& board)
-        : rules(std::move(rules)) {}
-    
-    /// Initiailize with a regular old heap allocation
-    Automata(Rules&& rules, uint8_t *board_ptr, std::size_t width, std::size_t height)
-        : rules(std::move(rules)) {}
-    
+    Automata(std::size_t x, std::size_t y, Rule* rule, Seed* seed)
+        : x(x),
+          y(y),
+          rule(rule),
+          seed(seed) {}
+ 
     /// @TODO
-    void step();
+    void simulate(std::size_t ticks); 
     
     /// @TODO
     void draw();
 
 private:
-    Rules rules;
+    std::size_t x;
+    std::size_t y; 
+    Rule* rule;
+    Seed* seed;
 
-};
+    /// Internal buffers
+    Halide::Buffer<uint8_t> sim_buff;
+    Halide::Buffer<uint8_t> draw_buff;
+    
+    /// @TODO
+    void step();
+};    
 
-/*
-Interface:
-
-auto conways = new Automata(Rules::Conway);
-
-// start time
-while (!max_iter) {
-    conways.step();
-    conways.draw();
-}
-// stop time
-
-*/

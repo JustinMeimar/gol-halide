@@ -1,18 +1,14 @@
 #include <iostream>
 #include "automata.h"
 
-int main() {
-
-    // auto rules = Rules::Conways();
-    // for (const auto predicate : rules.getRules()) {
-    //     std::cout << "RULE: " << predicate << std::endl; 
-    // }
+int main(int argc, char **argv) {
+        
+    int x = 16;
+    int y = 2;
+    Automata gol(x, y, new ConwayRule("b23/s2"), new RunLengthEncoding("8b8o$8o8b!")); 
     
-    Automata gol = Automata(Rules::Conways());
-    while (1) {
-        gol.step();
-        gol.draw();
-    }
+    std::cout << "I am in main..\n";
+    gol.simulate(10);
 
     return 0;
 }

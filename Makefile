@@ -9,7 +9,7 @@ CXX=g++
 CXXFLAGS=-std=c++17
 
 all:
-	$(CXX) main.cpp -g -I $(HALIDE_INC_DIR) \
+	$(CXX) src/main.cpp src/automata.cpp -g -I $(HALIDE_INC_DIR) \
 		-L $(HALIDE_LIB_DIR) \
 		-lHalide -lpthread -ldl \
 		-o gol $(CXXFLAGS)
