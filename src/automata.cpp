@@ -24,19 +24,19 @@ static void init_input(Halide::Buffer<uint8_t>& input) {
 }
 
 Halide::Buffer<uint8_t> RunLengthEncoding::allocate(std::size_t x, std::size_t y) {
-    auto buff = Halide::Buffer<uint8_t>(128, 128);
+    auto buff = Halide::Buffer<uint8_t>(x, y);
     buff.allocate();
-
     return buff;
 }
 
-void ConwayRule::apply(Halide::Buffer<uint8_t>& buffer,
+void ConwayRule::apply(Halide::Buffer<uint8_t>& read_buff,
+                       Halide::Buffer<uint8_t>& write_buff,               
                        const int width,
                        const int height) {
  
     Halide::Var x("x"), y("y"); 
     Halide::Func padded_input = Halide::BoundaryConditions::constant_exterior(
-        buffer, 
+        read_buff, 
         Halide::cast<uint8_t>(0),// out-of-bounds value
         0, width, // x bounds
         0, height // y bounds
@@ -65,51 +65,48 @@ void ConwayRule::apply(Halide::Buffer<uint8_t>& buffer,
     );
      
     // temporary buffer for the result
-    Halide::Buffer<uint8_t> temp(width, height);
-    nextState.realize(temp);
+    // Halide::Buffer<uint8_t> temp(width, height);
+    nextState.realize(write_buff);
     
     // copy result back to input buffer
-    buffer.copy_from(temp);
+    read_buff.copy_from(write_buff);
 }
 
 /////////////////////////////////////////////////////////////////////
 void Automata::simulate(std::size_t ticks) {
     printf("Here, I am\n"); 
     
-    // printf("Computed the pipeline\n");
-    const int width = 1000;
-    const int height = 1000;
-    
-    // allocate a rendering config
-    render::GridConfig config = {
-        .size = 80,
-        .cellSize = 2.0f / 80,
+    GridBuffer initial = seed->allocate(x, y);
+    async_seq.dual_buff.buff_one.copy_from(initial);
+
+
+    render::GridConfig config{
+        .size = static_cast<int>(x),
+        .cellSize = 4.0f / static_cast<float>(x),
         .windowWidth = 800,
         .windowHeight = 800,
-        .title = "Sim!",
-        .maxTicks = ticks,
-    }; 
+        .title = "Automata Simulation",
+        .maxTicks = ticks
+    };
 
-    std::thread t(&render::GridApplication::run, std::move(config));
-
-    Halide::Buffer<uint8_t> input(width, height);
-    init_input(input);
+    // // Launch simulation threads (let's use 4 threads)
+    // constexpr size_t NUM_SIM_THREADS = 4;
+    // size_t ticks_per_thread = ticks / NUM_SIM_THREADS;
     
-    auto start = std::chrono::high_resolution_clock::now();
+    // Create and launch simulation thread
+    threads.emplace_back(&AsyncFrameSequencer::sim_thread,
+                       &async_seq,
+                       std::ref(rule),
+                       ticks);
 
-    for (int i=0; i<100; i++) {
-        rule->apply(input, width, height);
+    // Launch render thread
+    threads.emplace_back(&AsyncFrameSequencer::render_thread,
+                        &async_seq,
+                        std::move(config));
+
+    // Wait for all threads to complete
+    for (auto& thread : threads) {
+        thread.join();
     }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration_ms = end - start;
-    std::chrono::duration<double> duration_sec = end - start;
-
-    // Output the duration
-    std::cout << "Duration: " << duration_ms.count() << " ms (" 
-              << duration_sec.count() << " s)" << std::endl;
-
-    t.join();
 }
-
 

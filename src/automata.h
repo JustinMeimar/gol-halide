@@ -4,19 +4,19 @@
 #include <memory>
 #include <iostream>
 #include <unordered_map>
-
+#include <thread>
+#include <atomic>
+#include <optional>
 #include <Halide.h>
 #include "render.h"
-
-#define BLACK 0x00
-#define WHITE 0xFF
 
 using GridBuffer = Halide::Buffer<uint8_t>;
 
 class Rule { 
     public:
         virtual ~Rule() = default; 
-        virtual void apply(GridBuffer& buff, const int w, const int h) = 0;
+        virtual void apply(GridBuffer& read_buff, GridBuffer& write_buff,
+                           const int w, const int h) = 0;
     
     protected:
         Halide::Func update_func;
@@ -28,14 +28,7 @@ class ConwayRule : public Rule {
     public:
         ConwayRule(std::string &&rule_string) {}
 
-        virtual void apply(GridBuffer& buff, const int w, const int h) override;
-        // 
-        virtual void define_and_sched(); 
-};
-
-class HexagonalRule : public Rule {
-  public:
-    virtual void apply(GridBuffer& buff, const int w, const int h) override;
+        virtual void apply(GridBuffer&, GridBuffer&, const int w, const int h) override;
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -63,13 +56,74 @@ class RunLengthEncoding : public Seed {
 /////////////////////////////////////////////////////////////////////
 /// automata.h
 
+
+struct DualBuffer {
+
+    DualBuffer(int w, int h)
+        : w(w),
+          h(h),
+          buff_one(w, h),
+          buff_two(w, h) {}
+    
+    int w, h;
+    GridBuffer buff_one;
+    GridBuffer buff_two;
+
+    std::atomic<bool> active_buff{false}; // point to buff_one first
+    
+    /// Supply the lambda to apply to the buffer
+    // void apply_and_swap(std::function<void(GridBuffer&)> apply) {
+    void apply_and_swap(std::unique_ptr<Rule>& r) {
+        
+        // use predicated excution to determine current buffer
+        GridBuffer& cur_buff = active_buff ? buff_two : buff_one;
+        GridBuffer& other_buff = active_buff ? buff_one : buff_two; 
+        
+        // apply the computation to the other buffer
+        r->apply(other_buff, cur_buff, w, h);
+        
+        // other buffer becomes next read buffer
+        active_buff = !active_buff; 
+    }
+};
+
+
+struct AsyncFrameSequencer {
+     
+    AsyncFrameSequencer(int w, int h) : dual_buff(w, h) {}
+    
+    // members
+    DualBuffer dual_buff;
+    std::atomic<size_t> simulated_frames{0};
+    std::atomic<size_t> cur_render_frame{0};
+    
+    // the thread(s) used for simulating the automata 
+    void sim_thread(std::unique_ptr<Rule>& rule, size_t ticks) { 
+        for (int i=0; i<ticks; i++) {
+            dual_buff.apply_and_swap(rule);
+        }
+    }
+
+    // the thread used for rendering
+    void render_thread(render::GridConfig&& config) {
+        
+        render::OpenGLContext context(std::move(config));
+        while (!context.shouldClose()) {
+            context.renderFrame(config);
+            context.swapBuffersAndPollEvents();
+        }
+    } 
+};
+
 class Automata {
 public:
-    Automata(std::size_t x, std::size_t y, Rule* rule, Seed* seed)
+    Automata(std::size_t x, std::size_t y, std::unique_ptr<Rule> rule,
+                                           std::unique_ptr<Seed> seed)
         : x(x),
           y(y),
-          rule(rule),
-          seed(seed) {}
+          rule(std::move(rule)),
+          seed(std::move(seed)),
+          async_seq(x, y) {}
  
     /// @TODO
     void simulate(std::size_t ticks); 
@@ -77,12 +131,11 @@ public:
 private:
     std::size_t x;
     std::size_t y; 
-    Rule* rule;
-    Seed* seed;
-    
-    /// @TODO: Figure how to properly allocate and atomic swap these.
-    /// Internal buffers
-    GridBuffer sim_buff;
-    GridBuffer draw_buff; 
+    std::unique_ptr<Rule> rule;
+    std::unique_ptr<Seed> seed;
+    AsyncFrameSequencer async_seq;
+
+    /// four for the simulation, one for the queue, another for the renderer
+    std::vector<std::thread> threads;
 };    
 
