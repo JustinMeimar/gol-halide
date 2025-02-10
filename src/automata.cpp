@@ -1,7 +1,7 @@
 #include "automata.h"
 #include <chrono>
+#include <thread>
 
-/////////////////////////////////////////////////////////////////////
 static void print_buffer(Halide::Buffer<uint8_t>& buff) {
     const std::size_t w = buff.width();
     const std::size_t h = buff.height();
@@ -23,7 +23,6 @@ static void init_input(Halide::Buffer<uint8_t>& input) {
     }
 }
 
-/////////////////////////////////////////////////////////////////////
 Halide::Buffer<uint8_t> RunLengthEncoding::allocate(std::size_t x, std::size_t y) {
     auto buff = Halide::Buffer<uint8_t>(128, 128);
     buff.allocate();
@@ -31,12 +30,6 @@ Halide::Buffer<uint8_t> RunLengthEncoding::allocate(std::size_t x, std::size_t y
     return buff;
 }
 
-/////////////////////////////////////////////////////////////////////
-
-/// Iteration #1
-/// * Predicated alive/dead
-/// * Full copy to temporary buffer.
-/// * Function call for each update
 void ConwayRule::apply(Halide::Buffer<uint8_t>& buffer,
                        const int width,
                        const int height) {
@@ -49,7 +42,6 @@ void ConwayRule::apply(Halide::Buffer<uint8_t>& buffer,
         0, height // y bounds
     );
     
-    // Define neighborhood sum computation
     Halide::RDom r(-1, 3, -1, 3);  // 2D iteration from -1 to 1
     Halide::Func neighborSum;
     neighborSum(x, y) = Halide::sum(padded_input(x + r.x, y + r.y)) - padded_input(x, y);
@@ -87,7 +79,19 @@ void Automata::simulate(std::size_t ticks) {
     // printf("Computed the pipeline\n");
     const int width = 1000;
     const int height = 1000;
- 
+    
+    // allocate a rendering config
+    render::GridConfig config = {
+        .size = 80,
+        .cellSize = 2.0f / 80,
+        .windowWidth = 800,
+        .windowHeight = 800,
+        .title = "Sim!",
+        .maxTicks = ticks,
+    }; 
+
+    std::thread t(&render::GridApplication::run, std::move(config));
+
     Halide::Buffer<uint8_t> input(width, height);
     init_input(input);
     
@@ -104,15 +108,8 @@ void Automata::simulate(std::size_t ticks) {
     // Output the duration
     std::cout << "Duration: " << duration_ms.count() << " ms (" 
               << duration_sec.count() << " s)" << std::endl;
-}
 
-void Automata::draw() {
-    throw std::runtime_error("TODO!");
+    t.join();
 }
 
 
-void ConwayRule::define_and_sched() {
-    // define the computation     
-    // define the schedule
-    // update_func.
-}

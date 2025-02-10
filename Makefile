@@ -7,11 +7,12 @@ HALIDE_INC_DIR ?= $(HALIDE_BUILD_DIR)/include
 # Compiler settings
 CXX=g++
 CXXFLAGS=-std=c++17
+LIBS=-lHalide -lpthread -ldl -lGL -lGLEW -lglfw
 
 all:
-	$(CXX) src/main.cpp src/automata.cpp -g -I $(HALIDE_INC_DIR) \
+	$(CXX) src/main.cpp src/automata.cpp src/render.cpp -g -I $(HALIDE_INC_DIR) \
 		-L $(HALIDE_LIB_DIR) \
-		-lHalide -lpthread -ldl \
+		$(LIBS) \
 		-o gol $(CXXFLAGS)
 print-vars:
 	@echo "HALIDE_ROOT: $(HALIDE_ROOT)"

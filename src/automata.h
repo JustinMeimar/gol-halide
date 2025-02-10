@@ -5,19 +5,18 @@
 #include <iostream>
 #include <unordered_map>
 
-/// @TODO: Fix this
-#include "/home/justin/install/Halide/build/include/Halide.h"
+#include <Halide.h>
+#include "render.h"
 
 #define BLACK 0x00
 #define WHITE 0xFF
 
-/////////////////////////////////////////////////////////////////////
-/// rule.h
+using GridBuffer = Halide::Buffer<uint8_t>;
 
 class Rule { 
     public:
         virtual ~Rule() = default; 
-        virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) = 0;
+        virtual void apply(GridBuffer& buff, const int w, const int h) = 0;
     
     protected:
         Halide::Func update_func;
@@ -29,14 +28,14 @@ class ConwayRule : public Rule {
     public:
         ConwayRule(std::string &&rule_string) {}
 
-        virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) override;
+        virtual void apply(GridBuffer& buff, const int w, const int h) override;
         // 
         virtual void define_and_sched(); 
 };
 
 class HexagonalRule : public Rule {
   public:
-    virtual void apply(Halide::Buffer<uint8_t>& buff, const int w, const int h) override;
+    virtual void apply(GridBuffer& buff, const int w, const int h) override;
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -44,7 +43,7 @@ class HexagonalRule : public Rule {
 
 class Seed {
   public:
-    virtual Halide::Buffer<uint8_t> allocate(std::size_t x, std::size_t y) = 0;
+    virtual GridBuffer allocate(std::size_t x, std::size_t y) = 0;
 };
 
 class RunLengthEncoding : public Seed {
@@ -54,11 +53,10 @@ class RunLengthEncoding : public Seed {
         : seed_string(std::move(seed_string)) {}
     
     /// @desc: Unpack the grid run-length-encoding string into a buffer
-    virtual Halide::Buffer<uint8_t> allocate(std::size_t x, std::size_t y);
+    virtual GridBuffer allocate(std::size_t x, std::size_t y);
 
   private:
     std::string seed_string;
-    // std::size_t x, y;
 };
 
 
@@ -75,21 +73,16 @@ public:
  
     /// @TODO
     void simulate(std::size_t ticks); 
-    
-    /// @TODO
-    void draw();
 
 private:
     std::size_t x;
     std::size_t y; 
     Rule* rule;
     Seed* seed;
-
-    /// Internal buffers
-    Halide::Buffer<uint8_t> sim_buff;
-    Halide::Buffer<uint8_t> draw_buff;
     
-    /// @TODO
-    void step();
+    /// @TODO: Figure how to properly allocate and atomic swap these.
+    /// Internal buffers
+    GridBuffer sim_buff;
+    GridBuffer draw_buff; 
 };    
 
