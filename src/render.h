@@ -8,6 +8,9 @@
 #include <string>
 #include <stdexcept>
 #include <math.h>
+#include <Halide.h>
+
+using GridBuffer = Halide::Buffer<uint8_t>;
 
 namespace render {
 
@@ -77,7 +80,7 @@ public:
         glfwPollEvents();
     }
     
-    void renderFrame(const GridConfig& config);
+    void renderFrame(const GridConfig& config, const GridBuffer& buff);
 
 private:
     /// boilerplate

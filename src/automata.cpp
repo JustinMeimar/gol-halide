@@ -77,10 +77,13 @@ void Automata::simulate(std::size_t ticks) {
     printf("Here, I am\n"); 
     
     GridBuffer initial = seed->allocate(x, y);
+    init_input(initial); 
     async_seq.dual_buff.buff_one.copy_from(initial);
+    
+    std::cout << "INITIAL:\n";
+    print_buffer(initial);
 
-
-    render::GridConfig config{
+    render::GridConfig config {
         .size = static_cast<int>(x),
         .cellSize = 4.0f / static_cast<float>(x),
         .windowWidth = 800,

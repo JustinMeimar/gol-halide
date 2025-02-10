@@ -71,8 +71,11 @@ struct DualBuffer {
 
     std::atomic<bool> active_buff{false}; // point to buff_one first
     
+    const GridBuffer& getActiveBuffer() {
+        return (active_buff) ? buff_two : buff_one;
+    }
+
     /// Supply the lambda to apply to the buffer
-    // void apply_and_swap(std::function<void(GridBuffer&)> apply) {
     void apply_and_swap(std::unique_ptr<Rule>& r) {
         
         // use predicated excution to determine current buffer
@@ -101,15 +104,17 @@ struct AsyncFrameSequencer {
     void sim_thread(std::unique_ptr<Rule>& rule, size_t ticks) { 
         for (int i=0; i<ticks; i++) {
             dual_buff.apply_and_swap(rule);
+            simulated_frames++;
         }
     }
 
     // the thread used for rendering
     void render_thread(render::GridConfig&& config) {
         
+        std::size_t last_rendered_frame = 0; 
         render::OpenGLContext context(std::move(config));
         while (!context.shouldClose()) {
-            context.renderFrame(config);
+            context.renderFrame(config, dual_buff.getActiveBuffer());
             context.swapBuffersAndPollEvents();
         }
     } 

@@ -2,20 +2,29 @@
 
 namespace render {
 
-void OpenGLContext::renderFrame(const GridConfig& config) {
-    std::cout << "Rendering frame: " << frameCount << std::endl;
+void OpenGLContext::renderFrame(const GridConfig& config, const GridBuffer& buff) {
     
-    // Update colors based on frame count
-    for (size_t i = 0; i < colors.size(); i += 18) {  // 18 = 6 vertices * 3 color components
-        float r = sin(frameCount * 0.01f + i * 0.1f) * 0.5f + 0.5f;
-        float g = cos(frameCount * 0.02f + i * 0.05f) * 0.5f + 0.5f;
-        float b = sin(frameCount * 0.03f + i * 0.15f) * 0.5f + 0.5f;
-        
-        // Set same color for all 6 vertices of this cell
-        for (int j = 0; j < 18; j += 3) {
-            colors[i + j    ] = r;
-            colors[i + j + 1] = g;
-            colors[i + j + 2] = b;
+    for (int y = 0; y < config.size; y++) {
+        for (int x = 0; x < config.size; x++) {
+            // color vector has 18 elements for each cell in the grid
+            size_t color_index = (y * config.size + x) * 18;
+            
+            // find cell state from buffer
+            int buff_x = x * (buff.width() / config.size);
+            int buff_y = y * (buff.height() / config.size);
+            bool is_alive = static_cast<bool>(buff(buff_x, buff_y));
+            
+            // set colors based on cell state
+            float r = is_alive ? 1.0f : 0.0f;
+            float g = is_alive ? 1.0f : 0.0f;
+            float b = is_alive ? 1.0f : 0.0f;
+            
+            // update colors 3 colors for each 6 verticies for this cell.
+            for (int vertex = 0; vertex < 6; vertex++) {
+                colors[color_index + vertex * 3]     = r;
+                colors[color_index + vertex * 3 + 1] = g;
+                colors[color_index + vertex * 3 + 2] = b;
+            }
         }
     }
 
@@ -161,18 +170,18 @@ void OpenGLContext::cleanup() {
 }
 
 void GridApplication::run(GridConfig&& config) {
-    try {
-        // GLContext owns the Grid Config
-        OpenGLContext context(std::move(config));
-        
-        while (!context.shouldClose()) {
-            context.renderFrame(config);
-            context.swapBuffersAndPollEvents();
-        }
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    // try {
+    //     // GLContext owns the Grid Config
+    //     OpenGLContext context(std::move(config));
+    //     
+    //     while (!context.shouldClose()) {
+    //         context.renderFrame(config);
+    //         context.swapBuffersAndPollEvents();
+    //     }
+    // }
+    // catch (const std::exception& e) {
+    //     std::cerr << "Error: " << e.what() << std::endl;
+    // }
 }
 
 } // namespace render
