@@ -23,8 +23,7 @@ static void init_input(Halide::Buffer<uint8_t>& input) {
     }
 }
 
-
-StandardSeed StandardSeed::parse(fs::path& seed_path) {
+Seed2D Seed2D::parse(fs::path& seed_path) {
     int x = 0, y = 0;
     std::string seed_content;
     std::ifstream seed_file(seed_path);
@@ -72,10 +71,10 @@ StandardSeed StandardSeed::parse(fs::path& seed_path) {
         throw std::runtime_error("Invalid RLE file format: missing or invalid dimensions");
     }
     
-    return StandardSeed(x, y, std::move(seed_content));
+    return Seed2D(x, y, std::move(seed_content));
 }
 
-Halide::Buffer<uint8_t> StandardSeed::allocate(std::size_t x, std::size_t y) {
+Halide::Buffer<uint8_t> Seed2D::allocate(std::size_t x, std::size_t y) {
     auto buff = Halide::Buffer<uint8_t>(x, y);
     buff.fill(0);
 
@@ -162,16 +161,18 @@ void Automata::simulate(std::size_t ticks) {
     
     std::cout << "INITIAL:\n";
     print_buffer(initial);
+    
 
-    render::GridConfig config {
-        .size = static_cast<int>(x),
-        // .cellSize = 64.0f / static_cast<float>(x),
-        .cellSize = 1.0f,
-        .windowWidth = static_cast<int>(x) * 10,
-        .windowHeight = static_cast<int>(y) * 10,
-        .title = "Automata Simulation",
-        .maxTicks = ticks
-    };
+    render::GridConfig config(x, y, "Sim", ticks);
+    // render::GridConfig config {
+    //     .size = static_cast<int>(x),
+    //     // .cellSize = 64.0f / static_cast<float>(x),
+    //     .cellSize = 1.0f,
+    //     .windowWidth = static_cast<int>(x) * 10,
+    //     .windowHeight = static_cast<int>(y) * 10,
+    //     .title = "Automata Simulation",
+    //     .maxTicks = ticks
+    // };
 
     // Create and launch simulation thread
     threads.emplace_back(&AsyncFrameSequencer::sim_thread,

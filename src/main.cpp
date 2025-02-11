@@ -18,11 +18,11 @@ int main(int argc, char **argv) {
         return 1;
     }
     
-    auto seed = StandardSeed::parse(seed_path);
+    auto seed = Seed2D::parse(seed_path);
     
     Automata gol(seed.x, seed.y, 
                  std::make_unique<ConwayRule>("b23/s2"),
-                 std::make_unique<StandardSeed>(std::move(seed)));
+                 std::make_unique<Seed2D>(std::move(seed)));
     
     std::cout << "I am in main..\n";
     gol.simulate(1000); 

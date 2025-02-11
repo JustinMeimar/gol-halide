@@ -38,12 +38,29 @@ struct ShaderSources {
 };
 
 struct GridConfig {
-    int size;           // Number of cells per side
-    float cellSize;     // Size of each cell
-    int windowWidth;    // Window width in pixels
-    int windowHeight;   // Window height in pixels
-    std::string title;  // Window title
-    std::size_t maxTicks; // Stop render at this mark
+    int yDim;
+    int xDim;
+    
+    GridConfig(int x, int y, std::string title, size_t maxTicks)
+        : xDim(static_cast<int>(x)),
+          yDim(static_cast<int>(y)),
+          title(title),
+          maxTicks(maxTicks),
+          windowHeight(800),
+          windowWidth(800)
+    {
+        cellSize = 2.0f / std::max(xDim, yDim); 
+    }
+
+    int windowWidth;    // width in pixels
+    int windowHeight;   // height in pixels
+    std::string title;
+    std::size_t maxTicks;
+    float cellSize; 
+
+    // // Number of cells per side
+    // float cellSize;     // Size of each cell
+    
 };
 
 class OpenGLContext {
@@ -91,11 +108,6 @@ private:
     void checkShaderCompilation(GLuint shader, const std::string& type);  
     void checkProgramLinking(GLuint program); 
     void cleanup(); 
-};
-
-class GridApplication {
-public:
-    static void run(GridConfig&& config); 
 };
 
 };

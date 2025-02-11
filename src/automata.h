@@ -44,17 +44,17 @@ class Seed {
     virtual GridBuffer allocate(std::size_t x, std::size_t y) = 0;
 };
 
-class StandardSeed : public Seed {
+class Seed2D : public Seed {
   public:
     ///
-    StandardSeed(int x, int y, std::string&& seed_content)
+    Seed2D(int x, int y, std::string&& seed_content)
         : x(x), y(y), seed_content(seed_content) {}
     
     /// @desc: Unpack the grid run-length-encoding string into a buffer
     virtual GridBuffer allocate(std::size_t x, std::size_t y);
     
     /// @desc: Construct
-    static StandardSeed parse(fs::path& seed_path);
+    static Seed2D parse(fs::path& seed_path);
      
     int x, y;
   private:

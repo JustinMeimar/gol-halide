@@ -2,24 +2,26 @@
 
 namespace render {
 
+/// @desc: The openGL vertex buffer is composed of 6 verticies per cell making for
+/// yDim*xDim*6 verticies in total. For each vertex, there is three colors, therefore
+/// the openGL color buffer has yDim*xDim*18 elements in total.
+///
 void OpenGLContext::renderFrame(const GridConfig& config, const GridBuffer& buff) {
-    
-    for (int y = 0; y < config.size; y++) {
-        for (int x = 0; x < config.size; x++) {
-            // color vector has 18 elements for each cell in the grid
-            size_t color_index = (y * config.size + x) * 18;
+
+    for (int y = 0; y < config.yDim; y++) {
+        for (int x = 0; x < config.xDim; x++) {
+            // color index for this cell
+            size_t color_index = (y * config.xDim + x) * 18; 
             
-            // find cell state from buffer
-            int buff_x = x * (buff.width() / config.size);
-            int buff_y = y * (buff.height() / config.size);
-            bool is_alive = static_cast<bool>(buff(buff_x, buff_y));
+            // cell state from Halide buffer
+            bool is_alive = static_cast<bool>(buff(x, y));
             
-            // set colors based on cell state
+            // Set black and white values based on cell state
             float r = is_alive ? 1.0f : 0.0f;
             float g = is_alive ? 1.0f : 0.0f;
             float b = is_alive ? 1.0f : 0.0f;
             
-            // update colors 3 colors for each 6 verticies for this cell.
+            // Update color buffer for all 6 vertices of this cell
             for (int vertex = 0; vertex < 6; vertex++) {
                 colors[color_index + vertex * 3]     = r;
                 colors[color_index + vertex * 3 + 1] = g;
@@ -27,16 +29,18 @@ void OpenGLContext::renderFrame(const GridConfig& config, const GridBuffer& buff
             }
         }
     }
-
-    // Update color buffer
+    
+    // Update OpenGL color buffer
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
     glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(float),
                 colors.data(), GL_DYNAMIC_DRAW);
-
-    // Render
+    
+    // Clear the screen and render
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(shaderProgram);
-    glDrawArrays(GL_TRIANGLES, 0, config.size * config.size * 6);
+    
+    // Draw triangles
+    glDrawArrays(GL_TRIANGLES, 0, config.xDim * config.yDim * 6);
     
     frameCount++;
 }
@@ -96,8 +100,8 @@ void OpenGLContext::initShaders() {
 void OpenGLContext::createGrid(const GridConfig& config) {
     vertices.clear();
     colors.clear();
-    for (int y = 0; y < config.size; y++) {
-        for (int x = 0; x < config.size; x++) {
+    for (int y = 0; y < config.yDim; y++) {
+        for (int x = 0; x < config.xDim; x++) {
             float x1 = -1.0f + x * config.cellSize;
             float y1 = -1.0f + y * config.cellSize;
             float x2 = x1 + config.cellSize;
@@ -112,9 +116,9 @@ void OpenGLContext::createGrid(const GridConfig& config) {
                 x1, y2
             });
 
-            for (int i = 0; i < 6; i++) {  // 6 vertices per cell
+            for (int i = 0; i < 6; i++) {
                 colors.insert(colors.end(), {
-                    1.0f, 1.0f, 1.0f  // Start with white
+                    0.0f, 0.0f, 0.0f 
                 });
             }
         }
@@ -169,33 +173,4 @@ void OpenGLContext::cleanup() {
     glfwTerminate();
 }
 
-void GridApplication::run(GridConfig&& config) {
-    // try {
-    //     // GLContext owns the Grid Config
-    //     OpenGLContext context(std::move(config));
-    //     
-    //     while (!context.shouldClose()) {
-    //         context.renderFrame(config);
-    //         context.swapBuffersAndPollEvents();
-    //     }
-    // }
-    // catch (const std::exception& e) {
-    //     std::cerr << "Error: " << e.what() << std::endl;
-    // }
-}
-
 } // namespace render
-
-// int main() {
-//     GridConfig config{
-//         .size = 80,
-//         .cellSize = 2.0f / 80,
-//         .windowWidth = 800,
-//         .windowHeight = 800,
-//         .title = "Grid"
-//     };
-//
-//     GridApplication::run(config);
-//     return 0;
-// }
-
