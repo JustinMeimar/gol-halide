@@ -23,17 +23,69 @@ static void init_input(Halide::Buffer<uint8_t>& input) {
     }
 }
 
-Halide::Buffer<uint8_t> RunLengthEncoding::allocate(std::size_t x, std::size_t y) {
+
+StandardSeed StandardSeed::parse(fs::path& seed_path) {
+    int x = 0, y = 0;
+    std::string seed_content;
+    std::ifstream seed_file(seed_path);
+    std::string line;
+    
+    while (std::getline(seed_file, line)) {
+        
+        if (line.empty()) continue; // empty line
+        if (line[0] == '#') continue; // comments
+        
+        // Check for header line containing dimensions and rules
+        size_t x_pos = line.find("x = ");
+        if (x_pos != std::string::npos) {
+            x_pos += 4;  // skip 'x = '
+            size_t x_end = line.find(",", x_pos);
+            if (x_end != std::string::npos) {
+                x = std::stoi(line.substr(x_pos, x_end - x_pos));
+            } 
+            size_t y_pos = line.find("y = ");
+            if (y_pos != std::string::npos) {
+                y_pos += 4; // skip 'y = ' 
+                size_t y_end = line.find(",", y_pos);
+                if (y_end != std::string::npos) {
+                    y = std::stoi(line.substr(y_pos, y_end - y_pos));
+                }
+            }
+            /// @TODO: Parse the rule field
+            continue;
+        }
+        
+        size_t percent_pos = line.find('%');
+        if (percent_pos != std::string::npos) {
+            line = line.substr(0, percent_pos);
+        }
+        
+        size_t exclaim_pos = line.find('!');
+        if (exclaim_pos != std::string::npos) {
+            line = line.substr(0, exclaim_pos);
+            seed_content += line;
+            break; 
+        } 
+        seed_content += line;
+    } 
+    if (x == 0 || y == 0) {
+        throw std::runtime_error("Invalid RLE file format: missing or invalid dimensions");
+    }
+    
+    return StandardSeed(x, y, std::move(seed_content));
+}
+
+Halide::Buffer<uint8_t> StandardSeed::allocate(std::size_t x, std::size_t y) {
     auto buff = Halide::Buffer<uint8_t>(x, y);
     buff.fill(0);
-    
+
     int cur_x = 0;
     int cur_y = 0;
-    for (auto it = seed_string.begin(); it != seed_string.end(); it++) {
+    for (auto it = seed_content.begin(); it != seed_content.end(); it++) {
         if (*it == '!') break;
         
         int run_length = 0;
-        while (it != seed_string.end() && std::isdigit(*it)) {
+        while (it != seed_content.end() && std::isdigit(*it)) {
             run_length *= 10;
             run_length += static_cast<int>(*it - '0');
             it++;
@@ -113,9 +165,10 @@ void Automata::simulate(std::size_t ticks) {
 
     render::GridConfig config {
         .size = static_cast<int>(x),
-        .cellSize = 1.0f / static_cast<float>(x),
-        .windowWidth = 800,
-        .windowHeight = 800,
+        // .cellSize = 64.0f / static_cast<float>(x),
+        .cellSize = 1.0f,
+        .windowWidth = static_cast<int>(x) * 10,
+        .windowHeight = static_cast<int>(y) * 10,
         .title = "Automata Simulation",
         .maxTicks = ticks
     };

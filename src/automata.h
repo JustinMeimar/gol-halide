@@ -2,13 +2,18 @@
 #include <vector>
 #include <array>
 #include <memory>
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <thread>
 #include <atomic>
 #include <optional>
 #include <Halide.h>
+#include <filesystem>
 #include "render.h"
+
+
+namespace fs = std::filesystem;
 
 using GridBuffer = Halide::Buffer<uint8_t>;
 
@@ -39,17 +44,22 @@ class Seed {
     virtual GridBuffer allocate(std::size_t x, std::size_t y) = 0;
 };
 
-class RunLengthEncoding : public Seed {
+class StandardSeed : public Seed {
   public:
     ///
-    RunLengthEncoding(std::string&& seed_string)
-        : seed_string(std::move(seed_string)) {}
+    StandardSeed(int x, int y, std::string&& seed_content)
+        : x(x), y(y), seed_content(seed_content) {}
     
     /// @desc: Unpack the grid run-length-encoding string into a buffer
     virtual GridBuffer allocate(std::size_t x, std::size_t y);
-
+    
+    /// @desc: Construct
+    static StandardSeed parse(fs::path& seed_path);
+     
+    int x, y;
   private:
-    std::string seed_string;
+    std::string seed_content; 
+    // std::string seed_string;
 };
 
 
@@ -121,7 +131,7 @@ struct AsyncFrameSequencer {
 };
 
 class Automata {
-public:
+public: 
     Automata(std::size_t x, std::size_t y, std::unique_ptr<Rule> rule,
                                            std::unique_ptr<Seed> seed)
         : x(x),
