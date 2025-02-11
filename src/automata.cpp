@@ -25,7 +25,33 @@ static void init_input(Halide::Buffer<uint8_t>& input) {
 
 Halide::Buffer<uint8_t> RunLengthEncoding::allocate(std::size_t x, std::size_t y) {
     auto buff = Halide::Buffer<uint8_t>(x, y);
-    buff.allocate();
+    buff.fill(0);
+    
+    int cur_x = 0;
+    int cur_y = 0;
+    for (auto it = seed_string.begin(); it != seed_string.end(); it++) {
+        if (*it == '!') break;
+        
+        int run_length = 0;
+        while (it != seed_string.end() && std::isdigit(*it)) {
+            run_length *= 10;
+            run_length += static_cast<int>(*it - '0');
+            it++;
+        }
+        if (run_length == 0) run_length = 1;
+        
+        if (*it == '$') {
+            cur_y++;
+            cur_x = 0;
+            continue;
+        }
+        
+        if (cur_x < x && cur_y < y) {
+            for (int i = 0; i < run_length && cur_x < x; i++) {
+                buff(cur_x++, cur_y) = (*it == 'o') ? 1 : 0;
+            }
+        }
+    } 
     return buff;
 }
 
@@ -77,7 +103,6 @@ void Automata::simulate(std::size_t ticks) {
     printf("Here, I am\n"); 
     
     GridBuffer initial = seed->allocate(x, y);
-    init_input(initial); 
     async_seq.dual_buff.buff_one.copy_from(initial);
     
     std::cout << "INITIAL:\n";
