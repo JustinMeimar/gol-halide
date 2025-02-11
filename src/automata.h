@@ -79,11 +79,11 @@ struct DualBuffer {
     void apply_and_swap(std::unique_ptr<Rule>& r) {
         
         // use predicated excution to determine current buffer
-        GridBuffer& cur_buff = active_buff ? buff_two : buff_one;
-        GridBuffer& other_buff = active_buff ? buff_one : buff_two; 
+        GridBuffer& read_buff = active_buff ? buff_two : buff_one;
+        GridBuffer& write_buff = active_buff ? buff_one : buff_two; 
         
         // apply the computation to the other buffer
-        r->apply(other_buff, cur_buff, w, h);
+        r->apply(read_buff, write_buff, w, h);
         
         // other buffer becomes next read buffer
         active_buff = !active_buff; 
