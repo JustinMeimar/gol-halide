@@ -9,11 +9,20 @@ CXX=g++
 CXXFLAGS=-std=c++17
 LIBS=-lHalide -lpthread -ldl -lGL -lGLEW -lglfw
 
-all:
+sim:
 	$(CXX) src/main.cpp src/automata.cpp src/render.cpp -g -I $(HALIDE_INC_DIR) \
 		-L $(HALIDE_LIB_DIR) \
 		$(LIBS) \
 		-o gol $(CXXFLAGS)
+
+render:
+	$(CXX) src/main.cpp src/automata.cpp src/render.cpp -g \
+		-DRENDER=1 \
+		-I $(HALIDE_INC_DIR) \
+		-L $(HALIDE_LIB_DIR) \
+		$(LIBS) \
+		-o gol $(CXXFLAGS)
+
 print-vars:
 	@echo "HALIDE_ROOT: $(HALIDE_ROOT)"
 	@echo "HALIDE_BUILD_DIR: $(HALIDE_BUILD_DIR)"

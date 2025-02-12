@@ -46,8 +46,8 @@ struct GridConfig {
           yDim(static_cast<int>(y)),
           title(title),
           maxTicks(maxTicks),
-          windowHeight(800),
-          windowWidth(800)
+          windowWidth(1000),
+          windowHeight(1000)
     {
         cellSize = 2.0f / std::max(xDim, yDim); 
     }
@@ -57,10 +57,6 @@ struct GridConfig {
     std::string title;
     std::size_t maxTicks;
     float cellSize; 
-
-    // // Number of cells per side
-    // float cellSize;     // Size of each cell
-    
 };
 
 class OpenGLContext {

@@ -12,7 +12,6 @@
 #include <filesystem>
 #include "render.h"
 
-
 namespace fs = std::filesystem;
 
 using GridBuffer = Halide::Buffer<uint8_t>;
@@ -21,8 +20,7 @@ class Rule {
     public:
         virtual ~Rule() = default; 
         virtual void apply(GridBuffer& read_buff, GridBuffer& write_buff,
-                           const int w, const int h) = 0;
-    
+                           const int w, const int h) = 0; 
     protected:
         Halide::Func update_func;
         Halide::Var x, y;
@@ -62,10 +60,8 @@ class Seed2D : public Seed {
     // std::string seed_string;
 };
 
-
 /////////////////////////////////////////////////////////////////////
 /// automata.h
-
 
 struct DualBuffer {
 
@@ -99,7 +95,6 @@ struct DualBuffer {
         active_buff = !active_buff; 
     }
 };
-
 
 struct AsyncFrameSequencer {
      

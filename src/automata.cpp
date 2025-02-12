@@ -1,6 +1,4 @@
 #include "automata.h"
-#include <chrono>
-#include <thread>
 
 static void print_buffer(Halide::Buffer<uint8_t>& buff) {
     const std::size_t w = buff.width();
@@ -147,32 +145,17 @@ void ConwayRule::apply(Halide::Buffer<uint8_t>& read_buff,
     // nextState.realize({width, height});
     Halide::Realization realization({write_buff});
     nextState.realize(realization);
-    std::cout << "Just wrote to: \n";
-    print_buffer(write_buff);
 }
 
 /////////////////////////////////////////////////////////////////////
 void Automata::simulate(std::size_t ticks) {
-    printf("Here, I am\n"); 
     
     GridBuffer initial = seed->allocate(x, y);
     async_seq.dual_buff.buff_one.copy_from(initial);
     async_seq.dual_buff.buff_two.copy_from(initial);
     
-    std::cout << "INITIAL:\n";
-    print_buffer(initial);
-    
-
-    render::GridConfig config(x, y, "Sim", ticks);
-    // render::GridConfig config {
-    //     .size = static_cast<int>(x),
-    //     // .cellSize = 64.0f / static_cast<float>(x),
-    //     .cellSize = 1.0f,
-    //     .windowWidth = static_cast<int>(x) * 10,
-    //     .windowHeight = static_cast<int>(y) * 10,
-    //     .title = "Automata Simulation",
-    //     .maxTicks = ticks
-    // };
+    // Create the grid config
+    render::GridConfig config(x, y, "Sim", ticks); 
 
     // Create and launch simulation thread
     threads.emplace_back(&AsyncFrameSequencer::sim_thread,
@@ -180,14 +163,18 @@ void Automata::simulate(std::size_t ticks) {
                        std::ref(rule),
                        ticks);
 
+#ifdef RENDER
     // Launch render thread
     threads.emplace_back(&AsyncFrameSequencer::render_thread,
                         &async_seq,
                         std::move(config));
-
     // Wait for all threads to complete
     for (auto& thread : threads) {
         thread.join();
     }
+#else
+    threads.at(0).join();
+#endif
+ 
 }
 
